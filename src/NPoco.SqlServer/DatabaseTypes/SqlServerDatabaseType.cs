@@ -1,12 +1,8 @@
 using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
+using NPoco.SqlServer;
 using System.Data;
 using System.Data.Common;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using NPoco.SqlServer;
 
 namespace NPoco.DatabaseTypes
 {
