@@ -43,9 +43,8 @@ namespace NPoco.RowMappers
                 _mappingOntoExistingInstance = true;
             }
 
-            object[] values = new object[dataReader.FieldCount];
-            dataReader.GetValues(values);
-            _mapPlan(dataReader, values, context.Instance);
+            dataReader.GetValues(context.Values);
+            _mapPlan(dataReader, context.Values, context.Instance);
 
             var result = context.Instance as IOnLoaded;
             if (result != null)

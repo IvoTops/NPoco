@@ -9,9 +9,11 @@ namespace NPoco
 {
     public class MappingFactory
     {
-        public static List<Func<MapperCollection, IRowMapper>> RowMappers { get; private set; } 
+        public static List<Func<MapperCollection, IRowMapper>> RowMappers { get; private set; }
         private readonly PocoData _pocoData;
         private readonly IRowMapper _rowMapper;
+        // TOPFIX - Reusable Values buffer. Saves on allocations
+        private readonly object[] _pocoValuesBuffer;
 
         static MappingFactory()
         {
@@ -30,6 +32,7 @@ namespace NPoco
             _pocoData = pocoData;
             _rowMapper = RowMappers.Select(mapper => mapper(_pocoData.Mapper)).First(x => x.ShouldMap(pocoData));
             _rowMapper.Init(dataReader, pocoData);
+            _pocoValuesBuffer = new object[dataReader.FieldCount];
         }
 
         public object Map(DbDataReader dataReader, object instance)
@@ -37,7 +40,8 @@ namespace NPoco
             return _rowMapper.Map(dataReader, new RowMapperContext()
             {
                 Instance = instance,
-                PocoData = _pocoData
+                PocoData = _pocoData,
+                Values = _pocoValuesBuffer
             });
         }
     }

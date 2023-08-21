@@ -28,7 +28,7 @@ namespace NPoco
                 return item;
             });
         }
-        
+
         private static string ProcessParam(ref string sql, string rawParam, object[] args_src, List<object> args_dest, bool reuseParameters)
         {
             string param = rawParam.Substring(1);
@@ -42,14 +42,25 @@ namespace NPoco
                 if (paramIndex < 0 || paramIndex >= args_src.Length)
                     throw new ArgumentOutOfRangeException(String.Format("Parameter '@{0}' specified but only {1} parameters supplied (in `{2}`)", paramIndex, args_src.Length, sql));
                 arg_val = args_src[paramIndex];
-            }
-            else
+            } else
             {
                 // Look for a property on one of the arguments with this name
                 bool found = false;
                 arg_val = null;
                 foreach (var o in args_src)
                 {
+                    // TOPFIX - Added support for <string, object>[] array and expando-objects
+                    var list = o as (string, object)[];
+                    if (list != null)
+                    {
+                        foreach (var p in list) if (param == p.Item1)
+                            {
+                                found = true;
+                                arg_val = p.Item2;
+                                break;
+                            }
+                    }
+
                     var dict = o as IDictionary;
                     if (dict != null)
                     {
@@ -76,7 +87,7 @@ namespace NPoco
                         break;
                     }
 
-                    var fi =  type.GetField(param);
+                    var fi = type.GetField(param);
                     if (fi != null)
                     {
                         arg_val = fi.GetValue(o);
@@ -101,8 +112,7 @@ namespace NPoco
                     if (indexOfExistingValue >= 0)
                     {
                         sb.Append((sb.Length == 0 ? "@" : ",@") + indexOfExistingValue);
-                    }
-                    else
+                    } else
                     {
                         sb.Append((sb.Length == 0 ? "@" : ",@") + args_dest.Count);
                         args_dest.Add(i);
@@ -121,8 +131,7 @@ namespace NPoco
                     args_dest.Add(MappingHelper.GetDefault(type));
                 }
                 return sb.ToString();
-            }
-            else
+            } else
             {
                 if (reuseParameters)
                 {
@@ -152,24 +161,34 @@ namespace NPoco
             var underlyingT = Nullable.GetUnderlyingType(t);
             if (t.GetTypeInfo().IsEnum || (underlyingT != null && underlyingT.GetTypeInfo().IsEnum))        // PostgreSQL .NET driver wont cast enum to int
             {
-                p.Value = (int)value;
-            }
-            else if (t == typeof(Guid))
+                // TOPFIX - Enums can be byte, are not always int
+                p.Value = Convert.ChangeType(value, t.GetEnumUnderlyingType(), null); // Enums can be byte, ...
+            } else if (t == typeof(DateOnly))
+            {
+                // TOPFIX - Parameter of DateOnly type
+                p.Value =  ((DateOnly)value).ToDateTime(default);
+                p.DbType = DbType.Date;
+                dbtypeSet = true;
+            } else if (t == typeof(DateTime))
+            {
+                // TOPFIX - Parameter of DateTime type
+                p.Value = value;
+                p.DbType = DbType.DateTime2;
+                dbtypeSet = true;
+            } else if (t == typeof(Guid))
             {
                 p.Value = value;
                 p.DbType = DbType.Guid;
                 p.Size = 40;
                 dbtypeSet = true;
-            }
-            else if (t == typeof(string))
+            } else if (t == typeof(string))
             {
                 var strValue = value as string;
                 if (strValue == null)
                 {
                     p.Size = 0;
                     p.Value = DBNull.Value;
-                }
-                else
+                } else
                 {
                     // out of memory exception occurs if trying to save more than 4000 characters to SQL Server CE NText column. Set before attempting to set Size, or Size will always max out at 4000
                     if (strValue.Length + 1 > 4000 && p.GetType().Name == "SqlCeParameter")
@@ -180,8 +199,7 @@ namespace NPoco
                     p.Size = Math.Max(strValue.Length + 1, 4000); // Help query plan caching by using common size
                     p.Value = value;
                 }
-            }
-            else if (t == typeof(AnsiString))
+            } else if (t == typeof(AnsiString))
             {
                 var ansistrValue = value as AnsiString;
                 if (ansistrValue?.Value == null)
@@ -189,8 +207,7 @@ namespace NPoco
                     p.Size = 0;
                     p.Value = DBNull.Value;
                     p.DbType = DbType.AnsiString;
-                }
-                else
+                } else
                 {
                     // Thanks @DataChomp for pointing out the SQL Server indexing performance hit of using wrong string type on varchar
                     p.Size = Math.Max(ansistrValue.Value.Length + 1, 4000);
@@ -198,19 +215,15 @@ namespace NPoco
                     p.DbType = DbType.AnsiString;
                 }
                 dbtypeSet = true;
-            }
-            else if (value.GetType().Name == "SqlGeography") //SqlGeography is a CLR Type
+            } else if (value.GetType().Name == "SqlGeography") //SqlGeography is a CLR Type
             {
                 p.GetType().GetProperty("UdtTypeName").SetValue(p, "geography", null); //geography is the equivalent SQL Server Type
                 p.Value = value;
-            }
-
-            else if (value.GetType().Name == "SqlGeometry") //SqlGeometry is a CLR Type
+            } else if (value.GetType().Name == "SqlGeometry") //SqlGeometry is a CLR Type
             {
                 p.GetType().GetProperty("UdtTypeName").SetValue(p, "geometry", null); //geography is the equivalent SQL Server Type
                 p.Value = value;
-            }
-            else
+            } else
             {
                 p.Value = value;
             }

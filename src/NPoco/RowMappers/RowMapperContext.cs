@@ -7,5 +7,6 @@ namespace NPoco.RowMappers
         public object Instance { get; set; }
         public PocoData PocoData { get; set; }
         public Type Type { get { return PocoData.Type; } }
+        public object[] Values { get; set; }
     }
 }
