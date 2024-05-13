@@ -8,7 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.Collections.Specialized;
 using System.Reflection;
-using NPoco;
 
 namespace NPoco.fastJSON
 {

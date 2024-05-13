@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Description>An extremely easy to use Micro-ORM supporting Sql Server, MySQL, PostgreSQL, Oracle, Sqlite, SqlCE.</Description>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
     <AssemblyName>NPoco</AssemblyName>
     <PackageId>NPoco</PackageId>

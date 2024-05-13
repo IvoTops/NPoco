@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using NPoco.Linq;
-using System.Threading.Tasks;
 
 namespace NPoco
 {

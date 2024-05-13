@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace NPoco
+﻿namespace NPoco
 {
     /// <summary>
     /// The interface to define value object mapping

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -22,10 +21,27 @@ namespace NPoco.SqlServer
 
         public static void BulkInsert<T>(IDatabase db, IEnumerable<T> list, SqlBulkCopyOptions sqlBulkCopyOptions, InsertBulkOptions? insertBulkOptions)
         {
-            using (var bulkCopy = new SqlBulkCopy(SqlConnectionResolver(db.Connection), sqlBulkCopyOptions, SqlTransactionResolver(db.Transaction)))
+            if (insertBulkOptions?.BulkCopyLockTableExclusive ?? false == false)
             {
-                var table = BuildBulkInsertDataTable(db, list, bulkCopy, sqlBulkCopyOptions, insertBulkOptions);
-                bulkCopy.WriteToServer(table);
+                using (var bulkCopy = new SqlBulkCopy(SqlConnectionResolver(db.Connection), sqlBulkCopyOptions, SqlTransactionResolver(db.Transaction)))
+                {
+                    var table = BuildBulkInsertDataTable(db, list, bulkCopy, sqlBulkCopyOptions, insertBulkOptions);
+                    bulkCopy.WriteToServer(table);
+                }
+            } else
+            {
+                db.BeginTransaction();
+                try
+                {
+                    using (var bulkCopy = new SqlBulkCopy(SqlConnectionResolver(db.Connection), sqlBulkCopyOptions, SqlTransactionResolver(db.Transaction)))
+                    {
+                        var table = BuildBulkInsertDataTable(db, list, bulkCopy, sqlBulkCopyOptions, insertBulkOptions);
+                        db.Execute("SELECT * FROM " + bulkCopy.DestinationTableName + " WITH (TABLOCKX) WHERE 1=0");
+                        bulkCopy.WriteToServer(table);
+                        db.CompleteTransaction();
+                    }
+                }
+                catch (Exception ex) { db.AbortTransaction(); throw ex; }
             }
         }
 
@@ -36,10 +52,27 @@ namespace NPoco.SqlServer
 
         public static async Task BulkInsertAsync<T>(IDatabase db, IEnumerable<T> list, SqlBulkCopyOptions sqlBulkCopyOptions, InsertBulkOptions insertBulkOptions)
         {
-            using (var bulkCopy = new SqlBulkCopy(SqlConnectionResolver(db.Connection), sqlBulkCopyOptions, SqlTransactionResolver(db.Transaction)))
+            if (insertBulkOptions?.BulkCopyLockTableExclusive ?? false == false)
             {
-                var table = BuildBulkInsertDataTable(db, list, bulkCopy, sqlBulkCopyOptions, insertBulkOptions);
-                await bulkCopy.WriteToServerAsync(table).ConfigureAwait(false);
+                using (var bulkCopy = new SqlBulkCopy(SqlConnectionResolver(db.Connection), sqlBulkCopyOptions, SqlTransactionResolver(db.Transaction)))
+                {
+                    var table = BuildBulkInsertDataTable(db, list, bulkCopy, sqlBulkCopyOptions, insertBulkOptions);
+                    await bulkCopy.WriteToServerAsync(table).ConfigureAwait(false);
+                }
+            } else
+            {
+                db.BeginTransaction();
+                try
+                {
+                    using (var bulkCopy = new SqlBulkCopy(SqlConnectionResolver(db.Connection), sqlBulkCopyOptions, SqlTransactionResolver(db.Transaction)))
+                    {
+                        var table = BuildBulkInsertDataTable(db, list, bulkCopy, sqlBulkCopyOptions, insertBulkOptions);
+                        db.Execute("SELECT * FROM " + bulkCopy.DestinationTableName + " WITH (TABLOCKX) WHERE 1=0");
+                        await bulkCopy.WriteToServerAsync(table).ConfigureAwait(false);
+                    }
+                    db.CompleteTransaction();
+                }
+                catch (Exception ex) { db.AbortTransaction(); throw ex; }
             }
         }
 
@@ -108,12 +141,11 @@ namespace NPoco.SqlServer
 
             bulkCopy.DestinationTableName = db.DatabaseType.EscapeTableName(pocoData.TableInfo.TableName);
 
-            if (insertBulkOptions?.BulkCopyBatchSize != null)
-                bulkCopy.BatchSize = insertBulkOptions.BulkCopyBatchSize.Value;
+            if (insertBulkOptions?.BulkCopyBatchSize != null) bulkCopy.BatchSize = insertBulkOptions.BulkCopyBatchSize.Value;
             else bulkCopy.BatchSize = 4096;
 
-            if (insertBulkOptions?.BulkCopyTimeout != null)
-                bulkCopy.BulkCopyTimeout = insertBulkOptions.BulkCopyTimeout.Value;
+            if (insertBulkOptions?.BulkCopyTimeout != null) bulkCopy.BulkCopyTimeout = insertBulkOptions.BulkCopyTimeout.Value;
+            else bulkCopy.BulkCopyTimeout = 60;
 
             bulkCopy.EnableStreaming = insertBulkOptions?.BulkCopyStreaming ?? false;
 
@@ -130,8 +162,7 @@ namespace NPoco.SqlServer
                 return true;
             }).ToList();
 
-            foreach (var col in cols)
-                bulkCopy.ColumnMappings.Add(col.Value.MemberInfoKey, col.Value.ColumnName);
+            foreach (var col in cols) bulkCopy.ColumnMappings.Add(col.Value.MemberInfoKey, col.Value.ColumnName);
 
             var dr = new DataReader<T>(db, list, cols);
             return dr;

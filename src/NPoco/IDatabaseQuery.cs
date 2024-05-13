@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq.Expressions;
 using NPoco.Linq;
-using System.Threading.Tasks;
 
 namespace NPoco
 {

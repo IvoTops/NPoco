@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace NPoco
+﻿namespace NPoco
 {
     public class InsertBulkOptions
     {
@@ -10,5 +6,7 @@ namespace NPoco
         public int? BulkCopyTimeout { get; set; }
         public bool BulkCopyStreaming { get; set; }
         public bool BulkCopyUseInternalTransaction { get; set; }
+
+        public bool BulkCopyLockTableExclusive { get; set; }
     }
 }

@@ -12,15 +12,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using NPoco.Expressions;
-using NPoco.Extensions;
 using NPoco.Linq;
 using NPoco.Internal;
 
