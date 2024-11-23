@@ -23,14 +23,15 @@ namespace NPoco
 
             if (pc != null && pc.SerializedColumn && mapper?.ColumnSerializer != null)
             {
-                converter = src => mapper.ColumnSerializer.Deserialize((string) src, dstType);
+                converter = src => mapper.ColumnSerializer.Deserialize((string)src, dstType);
                 return converter;
             }
 
             // Standard DateTime->Utc mapper
             if (pc != null && pc.ForceToUtc && srcType == typeof(DateTime) && (dstType == typeof(DateTime) || dstType == typeof(DateTime?)))
             {
-                converter = src => new DateTime(((DateTime) src).Ticks, DateTimeKind.Utc);
+                converter = src => ((DateTime)src).Kind == DateTimeKind.Utc ? src : new DateTime(((DateTime)src).Ticks, DateTimeKind.Utc);
+                //converter = src => new DateTime(((DateTime)src).Ticks, DateTimeKind.Utc);
                 return converter;
             }
 
@@ -49,31 +50,25 @@ namespace NPoco
                     converter = src => Enum.ToObject((underlyingType ?? dstType), src);
                     return converter;
                 }
-            }
-            else if (srcType == typeof(string) && (dstType == typeof(Guid) || dstType == typeof(Guid?)))
+            } else if (srcType == typeof(string) && (dstType == typeof(Guid) || dstType == typeof(Guid?)))
             {
-                converter = src => Guid.Parse((string) src);
-            }
-            else if ((!pc?.ValueObjectColumn ?? true) && !dstType.IsAssignableFrom(srcType))
+                converter = src => Guid.Parse((string)src);
+            } else if ((!pc?.ValueObjectColumn ?? true) && !dstType.IsAssignableFrom(srcType))
             {
                 converter = src => Convert.ChangeType(src, (underlyingType ?? dstType), null);
             }
             return converter;
         }
 
-        static bool IsIntegralType(Type t)
-        {
-            //var tc = Type.GetTypeCode(t);
-            //return tc >= TypeCode.SByte && tc <= TypeCode.UInt64;
-            //Not available for now
-            return new[]
+        static Type[] IntegralTypes = new[]
             {
-                typeof(SByte), typeof(Byte),
-                typeof(Int16), typeof(UInt16),
-                typeof(Int32), typeof(UInt32),
-                typeof(Int64), typeof(UInt64)
-            }.Contains(t);
-        }
+              typeof(Int32), typeof(UInt32),
+              typeof(Int16), typeof(UInt16),
+              typeof(Int64), typeof(UInt64),
+              typeof(SByte), typeof(Byte)
+            };
+
+        static bool IsIntegralType(Type t) => IntegralTypes.Contains(t);
 
         public static object GetDefault(Type type)
         {

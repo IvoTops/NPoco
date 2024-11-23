@@ -31,8 +31,7 @@ namespace NPoco.RowMappers
 
         public static bool IsValueTuple(Type type)
         {
-            if (!type.IsGenericType)
-                return false;
+            if (!type.IsGenericType)   return false;
 
             var baseType = type.GetGenericTypeDefinition();
             return (
